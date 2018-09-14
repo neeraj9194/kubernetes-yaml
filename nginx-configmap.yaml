@@ -23,8 +23,8 @@ data:
         access_log  /dev/stdout;
         error_log  /dev/stdout info;
 
-        ssl_certificate      conf/kisanhub.crt;
-        ssl_certificate_key  conf/kisanhub.key;
+        ssl_certificate      conf/xxx.crt;
+        ssl_certificate_key  conf/xxx.key;
         ssl_session_cache    shared:SSL:10m;
         ssl_session_timeout  5m;
         ssl_protocols       TLSv1 TLSv1.1 TLSv1.2;
@@ -32,7 +32,7 @@ data:
         # http://blog.mozilla.org/security/2013/07/29/ocsp-stapling-in-firefox/
         resolver 8.8.8.8;
         ssl_stapling on;
-        ssl_trusted_certificate conf/kisanhub.crt;
+        ssl_trusted_certificate conf/xxxx.crt;
 
         # to avoid ssl stripping https://en.wikipedia.org/wiki/SSL_stripping#SSL_stripping
         add_header Strict-Transport-Security "max-age=31536000; includeSubdomains;";
@@ -57,14 +57,14 @@ data:
 
         location ~ ^/(static/|robots.txt|favicon.ico) {
             rewrite ^/static/(.*)$ /$1 break;
-            proxy_set_header Host 'kh-eu-dev.storage.googleapis.com';
+            proxy_set_header Host '';
             proxy_set_header Authorization '';
             proxy_hide_header x-amz-id-2;
             proxy_hide_header x-amz-request-id;
             proxy_hide_header Set-Cookie;
             proxy_ignore_headers "Set-Cookie";
             proxy_intercept_errors on;
-            proxy_pass https://kh-eu-dev.storage.googleapis.com;
+            proxy_pass ;
             expires 1y;
         }
 
@@ -78,7 +78,7 @@ data:
 
     server {
       listen 80;
-      server_name kube.kisanhub.com;
+      server_name ;
       rewrite ^ https://$host$request_uri permanent;
     }
 

@@ -1,0 +1,85 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nginx-conf
+data:
+  app.conf: |
+    upstream app {
+        server 127.0.0.1:8001;
+    }
+
+    add_header X-Frame-Options SAMEORIGIN;
+
+    add_header X-Content-Type-Options nosniff;
+
+    add_header X-XSS-Protection "1; mode=block";
+
+    server {
+        listen 443 ssl default deferred;
+        server_name kube.kisanhub.com;
+        client_max_body_size 600M;
+        keepalive_timeout    120;
+
+        access_log  /dev/stdout;
+        error_log  /dev/stdout info;
+
+        ssl_certificate      conf/kisanhub.crt;
+        ssl_certificate_key  conf/kisanhub.key;
+        ssl_session_cache    shared:SSL:10m;
+        ssl_session_timeout  5m;
+        ssl_protocols       TLSv1 TLSv1.1 TLSv1.2;
+
+        # http://blog.mozilla.org/security/2013/07/29/ocsp-stapling-in-firefox/
+        resolver 8.8.8.8;
+        ssl_stapling on;
+        ssl_trusted_certificate conf/kisanhub.crt;
+
+        # to avoid ssl stripping https://en.wikipedia.org/wiki/SSL_stripping#SSL_stripping
+        add_header Strict-Transport-Security "max-age=31536000; includeSubdomains;";
+
+        location / {
+            proxy_redirect      off;
+            proxy_set_header    Host                    $host;
+            proxy_set_header    X-Real-IP               $remote_addr;
+            proxy_set_header    X-Forwarded-For         $proxy_add_x_forwarded_for;
+            proxy_set_header    X-Forwarded-Proto       $scheme;
+            proxy_pass          http://app;
+            proxy_set_header    REMOTE_ADDR             $remote_addr;
+            client_max_body_size 600M;
+            proxy_read_timeout  600s;
+        }
+
+         location /flower/ {
+            rewrite ^/flower/(.*)$ /$1 break;
+            proxy_pass http://127.0.0.1:5556;
+            proxy_set_header Host $host;
+        }
+
+        location ~ ^/(static/|robots.txt|favicon.ico) {
+            rewrite ^/static/(.*)$ /$1 break;
+            proxy_set_header Host 'kh-eu-dev.storage.googleapis.com';
+            proxy_set_header Authorization '';
+            proxy_hide_header x-amz-id-2;
+            proxy_hide_header x-amz-request-id;
+            proxy_hide_header Set-Cookie;
+            proxy_ignore_headers "Set-Cookie";
+            proxy_intercept_errors on;
+            proxy_pass https://kh-eu-dev.storage.googleapis.com;
+            expires 1y;
+        }
+
+        location /.well-known/ {
+            root           /var/www/mobile/app;
+            access_log      off;
+            log_not_found   off;
+        }
+
+    }
+
+    server {
+      listen 80;
+      server_name kube.kisanhub.com;
+      rewrite ^ https://$host$request_uri permanent;
+    }
+
+
